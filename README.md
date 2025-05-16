@@ -2,6 +2,8 @@
 ### Project
 
 ### Solution Architecture
+`Solution`
+![Database Relationship Diagram](/arch-solution.drawio.svg)
 `Process for user login`
 ```mermaid
 sequenceDiagram
