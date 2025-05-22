@@ -1,0 +1,328 @@
+name: "verxSolution"
+services:
+  verx_evaluation_mssqlserver:
+    build:
+        context: Docker/SQLServer/
+    image: db-sqlserver
+    container_name: verx_mssqlserver
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_PID: 'Developer' 
+      MSSQL_SA_PASSWORD: 'SqlServer2022!'
+    ports: 
+      - "${SQLSERVER_PORT}:1433"
+    volumes:
+      - ./Docker/SQLServer/log:/var/opt/mssql/log
+      - ./Docker/SQLServer/data:/var/opt/mssql/data
+      - ./Docker/SQLServer/secrets:/var/opt/mssql/secrets
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P SqlServer2022! -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 100
+    networks:
+      - verx_env
+
+  verx_evaluation_mssql_init_db:
+    container_name: verx_mssqltools
+    build:
+        context: Docker/MSTools/
+    volumes:
+      - ./Docker/MSTools/init/VerxTransaction_Creation.sql:/tmp/VerxTransaction_Creation.sql
+      - ./Docker/MSTools/init/init-verx-creation.sh:/tmp/init-verx-creation.sh
+    command: /bin/bash ./tmp/init-verx-creation.sh
+    depends_on:
+      verx_evaluation_mssqlserver:
+        condition: service_healthy    
+    networks:
+        - verx_env
+
+  verx_evaluation_mssql_liquibase_consolidated:
+    image: liquibase/liquibase:4.1.1
+    container_name: verx_liquibase_consolidated
+    command:
+        - --url=jdbc:sqlserver://verx_evaluation_mssqlserver:1433;databaseName=VerxTransaction;encrypt=false;trustServerCertificate=true
+        - --username=sa
+        - --password=SqlServer2022!
+        - --changeLogFile=changelog-master.xml
+        - --logLevel=info
+        - update
+    volumes:
+        - ./verx-consolidated-services.api/Database:/liquibase/changelog
+    depends_on:
+      verx_evaluation_mssql_init_db:
+        condition: service_completed_successfully
+    networks:
+        - verx_env
+
+  elasticsearch:
+    build:
+      context: Docker/Elastic/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    image: elasticsearch
+    container_name: verx_elasticsearch
+    volumes:
+      - ./Docker/Elastic/config/elasticsearch.yml:/usr/share/Elastic/config/elasticsearch.yml
+      - type: volume
+        source: elasticsearch
+        target: /usr/share/Elastic/data
+    ports:
+      - "${ELASTIC_PORT}:9200"
+    environment:
+      HTTP_HOST: ${HTTP_HOST}
+      NETWORK_HOST: ${NETWORK_HOST}
+      NODE_SCALE: ${NODE_SCALE}
+      CLUSTER_NAME: ${CLUSTER_NAME}
+      discovery.type: ${NODE_SCALE}
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    mem_limit: ${MEM_LIMIT}
+    depends_on:
+      verx_evaluation_mssql_liquibase_consolidated:
+        condition: service_completed_successfully
+    networks:
+      - verx_env
+
+  verx_evaluation_logstash:
+    build:
+      context: Docker/Logstash/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    image: logstash
+    container_name: verx_logstash
+    volumes:
+      - ./Docker/Logstash/config/logstash.yml:/usr/share/Logstash/config/logstash.yml
+      - ./Docker/Logstash/pipeline:/usr/share/Logstash/pipeline
+    command: logstash -f /usr/share/Logstash/pipeline/logstash.conf
+    ports:
+      - "${LOGSTASH_PORT}:5044"
+    mem_limit: ${MEM_LIMIT}
+    environment:
+      ELASTIC_SERVER: "http://elasticsearch:${ELASTIC_PORT}"
+
+    depends_on:
+      - elasticsearch
+    networks:
+      - verx_env
+
+  verx_evaluation_kibana:
+    build:
+      context: Docker/Kibana/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    image: kibana
+    container_name: verx_kibana
+    volumes:
+      - type: bind
+        source: ./Docker/Kibana/config/kibana.yml
+        target: /usr/share/Kibana/config/kibana.yml
+        read_only: true
+    environment:
+      KIBANA_SERVER_NAME: kibana
+      SERVER_HOST: ${KIBANA_SERVER_HOST}
+      ELASTIC_SERVER: http://elasticsearch:${ELASTIC_PORT}
+    ports:
+      - "${KIBANA_PORT}:5601"
+    mem_limit: ${MEM_LIMIT}
+    depends_on:
+      - verx_evaluation_logstash
+    networks:
+      - verx_env
+
+  verx_evaluation_jaeger:
+    build:
+      context: Docker/Jaeger/
+    image: jaeger-tracing
+    container_name: verx_jaeger
+    depends_on:
+      - verx_evaluation_kibana
+    ports:
+      - "${JAEGER_PORT}:16686"
+    networks:
+      - verx_env
+
+  verx_evaluation_otelcollector:
+    build:
+      context: Docker/OTELCollector/
+    image: otel-collector
+    container_name: verx_otelcollector
+    volumes:
+      - ./Docker/OTELCollector/config/otel-collector.yml:/usr/share/OTELCollector/config/otel-collector.yml
+    command: [ "--config=/usr/share/OTELCollector/config/otel-collector.yml" ]
+    ports:
+      - "${OTELCOLLECTOR_GRPC_PORT}:4317"
+      - "${OTELCOLLECTOR_HTTP_PORT}:4318"
+    mem_limit: ${MEM_LIMIT}
+    depends_on:
+      - verx_evaluation_jaeger
+    networks:
+      - verx_env
+  verx_evaluation_zookeeper:
+    build:
+      context: Docker/Zookeeper/
+    image: cp-zookeeper
+    container_name: verx_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: "${ZOOKEEPER_CLIENT_PORT}"
+      ZOOKEEPER_TICK_TIME: "${ZOOKEEPER_TICK_TIME}"
+    depends_on:
+      - verx_evaluation_otelcollector
+    networks:
+      - verx_env
+
+  verx_evaluation_kafka:
+    build:
+      context: Docker/Kafka/
+    image: cp-kafka
+    container_name: verx_kafka
+    depends_on:
+      - verx_evaluation_zookeeper
+    ports:
+      - "${KAFKA_CLIENT_PORT}:9092"
+    volumes:
+      - ./Docker/Kafka/config/server.properties:/usr/share/Kafka/server.properties
+    command:
+      - bash
+      - -c
+      - "kafka-server-start /usr/share/Kafka/server.properties"
+    networks:
+      - verx_env
+  
+  verx_evaluation_rabbitmq:
+    build:
+      context: Docker/RabbitMQ/
+    image: rabbitmq-management
+    container_name: verx_rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - ./Docker/RabbitMQ/data/:/var/lib/rabbitmq/
+      - ./Docker/RabbitMQ/log/:/var/log/rabbitmq
+    networks:
+      - verx_env
+
+  verx_rabbitmq_waiter:
+    image: alpine:3.18
+    container_name: verx_rabbitmq_waiter
+    entrypoint: |
+      /bin/sh -c '
+        echo "Installing curl...";
+        apk update && apk add curl;
+        echo "Aguardando RabbitMQ Management em verx_evaluation_rabbitmq:15672...";
+        until curl -s http://verx_evaluation_rabbitmq:15672/ | grep -q "RabbitMQ Management"; do
+          sleep 2;
+          echo "RabbitMQ Management não está ativo ainda...";
+        done
+        echo "RabbitMQ Management está ativo!";
+      '
+    networks:
+      - verx_env
+
+  verx_evaluation_mongo:
+    container_name: verx_mongo
+    image: mongo:7.0
+    volumes:
+      - ./Docker/Mongo/config/mongo.yml:/usr/share/Mongo/config/mongo.yml
+      - type: volume
+        source: mongo
+        target: /usr/share/Mongo/data/db
+    environment:
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    depends_on:
+      verx_rabbitmq_waiter:
+        condition: service_completed_successfully
+    ports:
+      - "${MONGO_PORT}:27017"
+    mem_limit: ${MEM_LIMIT}
+    networks:
+      - verx_env
+
+  verx_transaction_consumer:
+    container_name: verx_transaction_consumer
+    image: ${DOCKER_REGISTRY-}verxtransactionconsumer
+    build:
+      context: verx-transaction-flow.serveless
+      dockerfile: Verx.TransactionFlow.Consumer/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Release
+      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - KafkaSettings__BootstrapServers=verx_evaluation_kafka:29092
+      - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
+      - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
+      - ConsolidatedSettings__UrlBase=http://verx_consolidate_command_api:8085
+    depends_on:
+      - verx_evaluation_mongo
+    networks:
+      - verx_env
+
+  verx_webhook_transaction_serveless:
+    container_name: verx_transactionflow_serverless
+    image: ${DOCKER_REGISTRY-}verxtransactionflowservelless
+    build:
+      context: verx-transaction-flow.serveless
+      dockerfile: Verx.TransactionFlow.Serveless/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8082
+      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - KafkaSettings__BootstrapServers=verx_evaluation_kafka:29092
+      - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
+      - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
+    ports:
+      - "8082:8082"
+    depends_on:
+      - verx_evaluation_mongo
+    networks:
+      - verx_env
+
+  verx_consolidate_query_api:
+    container_name: verx_consolidate_query_api
+    image: ${DOCKER_REGISTRY-}verxconsolidatequeryapi
+    build:
+      context: verx-consolidated-services.api
+      dockerfile: Verx.Consolidated.Onboarding.Query.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Release
+      - ASPNETCORE_HTTP_PORTS=8083
+      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - ConnectionStrings__MongoDB=mongodb://verx_evaluation_mongo:27017
+      - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
+      - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
+    ports:
+      - "8083:8083"
+    depends_on:
+      - verx_evaluation_mongo
+    networks:
+      - verx_env
+  verx_consolidate_command_api:
+    container_name: verx_consolidate_command_api
+    image: ${DOCKER_REGISTRY-}verxconsolidatecommandapi
+    build:
+      context: verx-consolidated-services.api
+      dockerfile: Verx.Consolidated.Onboarding.Command.API/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Release
+      - ASPNETCORE_HTTP_PORTS=8085
+      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - ConnectionStrings__MongoDB=mongodb://verx_evaluation_mongo:27017
+      - ConnectionStrings__VerxConsolidatedDB=Server=verx_evaluation_mssqlserver,1433;Database=VerxTransaction;User Id=sa;Password=SqlServer2022!;
+      - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
+      - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
+    ports:
+      - "8085:8085"
+    depends_on:
+      - verx_evaluation_mongo
+    networks:
+      - verx_env
+
+volumes:
+  elasticsearch:
+    name: elasticsearch
+  mongo:
+    name: mongo
+
+networks:
+  verx_env:
+    driver: bridge

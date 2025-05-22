@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Verx.Authentication.Service.Application\Verx.Authentication.Service.Application.csproj" />
+    <ProjectReference Include="..\Verx.Authentication.Service.Domain\Verx.Authentication.Service.Domain.csproj" />
+    <ProjectReference Include="..\Verx.Authentication.Service.Infrastructure\Verx.Authentication.Service.Infrastructure.csproj" />
+    <ProjectReference Include="..\Verx.Authentication.Service.Common\Verx.Authentication.Service.Common.csproj" />
+  </ItemGroup>
+
+</Project>

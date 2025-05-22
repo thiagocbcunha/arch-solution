@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Cloud.Functions.Framework" Version="3.0.1" />
+    <PackageReference Include="Google.Cloud.Functions.Hosting" Version="3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Verx.TransactionFlow.Application\Verx.TransactionFlow.Application.csproj" />
+    <ProjectReference Include="..\Verx.TransactionFlow.Infrastructure\Verx.TransactionFlow.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

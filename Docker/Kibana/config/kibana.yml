@@ -1,0 +1,3 @@
+server.host: ${SERVER_HOST}
+server.name: ${KIBANA_SERVER_NAME}
+elasticsearch.hosts: [ "${ELASTIC_SERVER}" ]

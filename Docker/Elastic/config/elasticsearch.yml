@@ -1,0 +1,2 @@
+http.host: ${HTTP_HOST}
+network.host: ${NETWORK_HOST}

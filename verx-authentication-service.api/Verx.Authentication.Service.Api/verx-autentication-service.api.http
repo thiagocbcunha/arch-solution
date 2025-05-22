@@ -1,0 +1,35 @@
+@verx_autentication_service.api_HostAddress = http://localhost:5167
+
+###
+
+POST {{verx_autentication_service.api_HostAddress}}/users
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "newuser@example3.com",
+  "password": "YourSecurePassword123!"
+}
+
+###
+
+POST {{verx_autentication_service.api_HostAddress}}/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "email": "newuser@example3.com",
+  "password": "YourSecurePassword123!"
+}
+
+###
+
+POST {{verx_autentication_service.api_HostAddress}}/validate-token
+Content-Type: application/json
+Accept: application/json
+
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJFbWFpbCI6Im5ld3VzZXJAZXhhbXBsZTMuY29tIiwiTmFtZSI6Im5ld3VzZXJAZXhhbXBsZTMuY29tIiwiZXhwIjoxNzQ3NTAwMTkyLCJpc3MiOiJWZXJ4IiwiYXVkIjoiVmVyeFVzZXJzIn0.vDjCe--aj_FxmaAiZ6du-HVsEUZtSkVLqDtULsUZkDs"
+}
+
+###

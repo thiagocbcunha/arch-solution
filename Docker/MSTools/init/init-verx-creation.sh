@@ -1,0 +1,1 @@
+/opt/mssql-tools/bin/sqlcmd -S verx_evaluation_mssqlserver -U sa -P SqlServer2022! -d master -i /tmp/VerxTransaction_Creation.sql
