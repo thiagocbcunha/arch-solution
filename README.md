@@ -103,7 +103,7 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Central de autenticação tanto para Mobile quanto Web.
 - **Conexões**:
   - Utilizado por ambos os BFFs (`BFF Mobile` e `BFF Web`).
-  - Armazena tokens em **Redis**.
+  - **Redis** armazena de dados sensveis que não podem trafegar no token, atua como uma forma eficiente para recuperar esses dados sem necessidade de consulta a serviço externo ou banco.
 
 ---
 
@@ -123,8 +123,8 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Utiliza `Authentication Server` para validação de JWT.
   - Comunica-se com:
     - `Command API`
-    - `Query API`
-    - `WebHook Transações` (produção de eventos Kafka)
+    - `QueryApi`
+    - `WebHook [Transactions]` (produção de eventos Kafka)
 
 #### BFF Web [BFFWebFlow]
 - **CICD**: Sim
@@ -140,14 +140,14 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Utiliza `Authentication Server` para validação de JWT.
   - Comunica-se com:
     - `Command API`
-    - `Query API`
-    - `WebHook Transações`
+    - `QueryApi`
+    - `WebHook [Transactions]`
 
 ---
 
-### 3.3. Serviços Consolidados (Daily Consolidate)
+### 3.3. Serviços Consolidados (DailyConsolidate)
 
-#### Query API
+#### QueryApi
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
@@ -157,7 +157,7 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Prover **consultas** de consolidação diária.
 - **Conexões**:
   - Utilizado pelos BFFs.
-  - Consulta bancos: `SQL Server [DailyConsolidate]` e `MongoDB [DailyConsolidate]`.
+  - Consulta bancos: `SqlServer [DailyConsolidate]` e `MongoDB [DailyConsolidate]`.
 
 #### Command API
 - **CICD**: Sim
@@ -169,9 +169,9 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Prover **modificações** e comandos relacionados à consolidação diária.
 - **Conexões**:
   - Utilizado pelos BFFs.
-  - Envia eventos para o `Worker [Daily Consolidate]`.
+  - Envia eventos para o `Worker [DailyConsolidate]`.
 
-#### Worker [Daily Consolidate]
+#### Worker [DailyConsolidate]
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
@@ -183,7 +183,7 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 - **Conexões**:
   - Recebe eventos do `Command API`.
   - Interage com:
-    - `SQL Server [DailyConsolidate]`
+    - `SqlServer [DailyConsolidate]`
     - `MongoDB [DailyConsolidate]`
     - `RabbitMQ [DailyConsolidate]`
 
@@ -198,7 +198,7 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 - **Platarforma**: GCP Functions
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**: 
-  - Atuar como produtor de eventos no **Kafka** (`TransactionFlow Events`).
+  - Atuar como produtor de eventos no **Kafka** (`TransactionEvent`).
 - **Conexões**:
   - Recebe chamadas dos BFFs (mobile/web).
   - Envia eventos para `Kafka`.
@@ -210,25 +210,27 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 - **Platarforma**: GKE
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**:
-  - Consumir eventos do `Kafka [TransactionFlow Events]`.
-  - Persistir os dados no banco `SQL Server [TransactionFlow]`.
+  - Consumir eventos do `Kafka [TransactionEvent]`.
+  - Fazer requisições para a `CommandApi [DailyConsolidate]`
+  - Atuar com Idepotência
+  - Atuar com Resiliência se utilizando de menimos de retry e deadletter (RabbitMq)
 - **Conexões**:
-  - Kafka → Worker → SQL Server
+  - Kafka → Worker → CommandApi → SqlServer 
 
 ---
 
 ## 4. Componentes Externos
 
-### SQL Server [DailyConsolidate]
+### SqlServer [DailyConsolidate]
 - **Descrição**: Banco de dados relacional para dados consolidados diários.
-- **Uso**: Consultas (`Query API`) e persistência de eventos processados (`Worker`).
+- **Uso**: Consultas (`QueryApi`) e persistência de eventos processados (`Worker`).
 
-### SQL Server [TransactionFlow]
-- **Descrição**: Armazena eventos de transações processadas pelo `Worker Transações`.
+### SqlServer [TransactionFlow]
+- **Descrição**: Armazena eventos de transações processadas pelo `Worker [Transactions]`.
 
 ### MongoDB [DailyConsolidate]
 - **Descrição**: Banco de dados NoSQL usado para armazenar dados de consolidação diária.
-- **Uso**: Alternativa ou complemento ao SQL Server em `Query API` e `Worker`.
+- **Uso**: Alternativa ou complemento ao SqlServer em `QueryApi` e `Worker`.
 
 ### Redis [Token JWT]
 - **Descrição**: Armazena tokens JWT temporariamente para rápida validação.
@@ -237,13 +239,13 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 ### Kafka [TransactionFlow Events]
 - **Descrição**: Sistema de mensageria para eventos de transações.
 - **Uso**:
-  - Produzido por: `WebHook Transações`.
-  - Consumido por: `Worker Transações`.
+  - Produzido por: `WebHook [Transactions]`.
+  - Consumido por: `Worker [Transactions]`.
 
 ### RabbitMQ [DailyConsolidate]
 - **Descrição**: Sistema de fila para consolidação diária.
 - **Uso**:
-  - Consumido pelo `Worker [Daily Consolidate]`.
+  - Consumido pelo `Worker [DailyConsolidate]`.
 
 ---
 
@@ -257,56 +259,56 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 ```mermaid
 sequenceDiagram
     actor Cliente
-    participant MobileApp
+    participant Front
     participant AuthenticationServer
     participant Redis
 
-    Cliente->>MobileApp: Acesso e login
-    MobileApp->>+AuthenticationServer: Requisição de autenticação (credenciais)
+    Cliente->>Front: Acesso e login
+    Front->>+AuthenticationServer: Requisição de autenticação (credenciais)
     activate AuthenticationServer
     AuthenticationServer-xRedis: Armazena token JWT
-    AuthenticationServer-->>-MobileApp: Retorna token JWT
+    AuthenticationServer-->>-Front: Retorna token JWT
 
     Note over Cliente, Redis: Fluxo de Sucesso para o Login
 ```
 
 ### 5.2. Consulta de Consolidação
-1. Cliente → `BFF` → `Query API`
-2. Query API → MongoDB
+1. Cliente → `BFF` → `QueryApi`
+2. QueryApi → MongoDB
 
 ```mermaid
 sequenceDiagram
     actor Cliente
-    participant MobileApp
-    participant Query Api
+    participant Front
+    participant QueryApi
     participant MongoDB
 
-    Cliente->>MobileApp: Consulta Consolidação
-    MobileApp->>+Query Api: Abter Consolidações por datas
-    Query Api->MongoDB: Consulta MongoDB
-    MongoDB-->>Query Api: Retorna para a Api
-    Query Api-->>MobileApp: Retorna para o front
+    Cliente->>Front: Consulta Consolidação
+    Front->>+QueryApi: Abter Consolidações por datas
+    QueryApi->+MongoDB: Consulta MongoDB
+    MongoDB-->>-QueryApi: Retorna para a Api
+    QueryApi-->>-Front: Retorna para o front
 
     Note over Cliente, MongoDB: Fluxo de Sucesso para o Login
 ```
 ### 5.3. Consulta de Consolidação
-1. Cliente → `BFF` → `Query API [Daily Consolidate]`
-2. `Query API [Daily Consolidate]` → `MongoDB`
-3. `MongoDB` → `Query API [Daily Consolidate]`
-4. `Query API [Daily Consolidate]` → Cliente
+1. Cliente → `BFF` → `QueryApi [DailyConsolidate]`
+2. `QueryApi [DailyConsolidate]` → `MongoDB`
+3. `MongoDB` → `QueryApi [DailyConsolidate]`
+4. `QueryApi [DailyConsolidate]` → Cliente
 
 ```mermaid
 sequenceDiagram
     actor Cliente
     participant BFF
-    participant Query API [Daily Consolidate]
+    participant QueryApi [DailyConsolidate]
     participant MongoDB
 
     Cliente->>BFF: Consulta Consolidação
-    BFF->>Query API [Daily Consolidate]: Obtem Consolidações por datas
-    Query API [Daily Consolidate]->MongoDB: Consulta MongoDB
-    MongoDB-->>Query API [Daily Consolidate]: Retorna para a Api
-    Query API [Daily Consolidate]-->>Cliente: Retorna para o front
+    BFF->>+QueryApi [DailyConsolidate]: Obtem Consolidações por datas
+    QueryApi [DailyConsolidate]->+MongoDB: Consulta MongoDB
+    MongoDB-->>-QueryApi [DailyConsolidate]: Retorna para a Api
+    QueryApi [DailyConsolidate]-->>-BFF: Retorna para o front
 
     Note over Cliente, MongoDB: Fluxo de consulta de Consolidações diárias
 ```
@@ -314,11 +316,11 @@ sequenceDiagram
 ### 5.4. Transações
 1. Cliente → `BFF` → `WebHook [Transactions]`
 2. Kafka → `Worker [Transactions]`
-3. `Worker [Transactions]` → `Command API [Daily Consolidate]`
-4. `Command API [Daily Consolidate]` → `RabbitMQ`
-5. `Command API [Daily Consolidate]` → `SqlServer`
-6. `RabbitMQ` → `Worker [Daily Consolidate]`
-7. `Worker [Daily Consolidate]` → `MongoDB`
+3. `Worker [Transactions]` → `Command API [DailyConsolidate]`
+4. `Command API [DailyConsolidate]` → `RabbitMQ`
+5. `Command API [DailyConsolidate]` → `SqlServer`
+6. `RabbitMQ` → `Worker [DailyConsolidate]`
+7. `Worker [DailyConsolidate]` → `MongoDB`
 
 ```mermaid
 sequenceDiagram
@@ -326,21 +328,21 @@ sequenceDiagram
     participant WebHook
     participant Kafka
     participant Worker [Transactions]
-    participant Command API [Daily Consolidate]
-    participant Sql Server
+    participant Command API [DailyConsolidate]
+    participant SqlServer
     participant RabbitMQ
-    participant Worker [Daily Consolidate]
+    participant Worker [DailyConsolidate]
     participant MongoDB
 
     Cliente->>WebHook: Submete Transação
     WebHook->>Kafka: Produz um Evento de Transação
     Kafka->>Worker [Transactions]: Consume um Evento de Transação
-    Worker [Transactions]->>Command API [Daily Consolidate]: Com mecanismo de Idepotencia e Resiliência
-    Command API [Daily Consolidate]->>Sql Server: Salva um evento de Transação
-    Sql Server->>Command API [Daily Consolidate]: Devolve um snapshot de consolidados
-    Command API [Daily Consolidate]->>RabbitMQ: Produz evento de transação para o Rabbit
-    RabbitMQ->>Worker [Daily Consolidate]: Consume o evento de transação
-    Worker [Daily Consolidate]->>MongoDB: Atualiza registo de consolidação no mongodb
+    Worker [Transactions]->>+Command API [DailyConsolidate]: Com mecanismo de Idepotencia e Resiliência
+    Command API [DailyConsolidate]->>SqlServer: Salva um evento de Transação
+    SqlServer->>Command API [DailyConsolidate]: Devolve um snapshot de consolidados
+    Command API [DailyConsolidate]->>-RabbitMQ: Produz evento de transação para o Rabbit
+    RabbitMQ->>Worker [DailyConsolidate]: Consume o evento de transação
+    Worker [DailyConsolidate]->>MongoDB: Atualiza registo de consolidação no mongodb
 
     Note over Cliente, MongoDB: Fluxo Principal
 ```
@@ -354,4 +356,4 @@ sequenceDiagram
   - Kafka → transações assíncronas, fluxo contínuo e distribuído.
   - RabbitMQ → mensagens de consolidação com menor volume, mas sensíveis à ordem e confirmação.
 - **Redis** é utilizado para manter informações sensíveis que não podesem ser mandadas no token de autenticação. Essas informações são devolvidas se o token for válido.
-- **MongoDB e SQL Server** coexistem para escalabilidade e flexibilidade de modelagem.
+- **MongoDB e SqlServer** coexistem para escalabilidade e flexibilidade de modelagem.
