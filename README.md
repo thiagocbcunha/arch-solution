@@ -12,9 +12,116 @@ Depois de finalizada a criação das imagens e dos containers
 
 A arquitetura segue o padrão **modular e orientado a serviços**, com separação clara entre front-end, BFFs, APIs de comando e consulta, workers e integrações externas, caracterizando uma abordagem **moderna baseada em microsserviços**. O desenvolvimento do código foi guiado por princípios de **Clean Architecture** e uso de **Design Patterns**, promovendo baixo acoplamento, alta coesão e facilidade de evolução. Para acesso a dados, foram utilizados tanto o **Dapper** quanto o **Entity Framework**, aproveitando o melhor de cada tecnologia conforme o cenário.
 
+## Modelagem Event-Sourcing no VerxTransaction
+
+O banco de dados **VerxTransaction** foi modelado seguindo o padrão **event-sourcing** para registrar e gerenciar o histórico de transações. Essa abordagem foi escolhida por diversos motivos:
+
+### Por que event-sourcing?
+
+- **Rastreabilidade e Auditoria:** Cada alteração de estado é registrada como um evento imutável, permitindo reconstruir todo o histórico de uma transação e atender requisitos de auditoria.
+- **Consistência e Integridade:** O modelo garante que o estado atual é sempre resultado da aplicação sequencial dos eventos, reduzindo inconsistências.
+- **Facilidade para integrações e reprocessamentos:** Eventos podem ser reprocessados ou publicados para outros sistemas, facilitando integrações e correções retroativas.
+- **Escalabilidade:** O armazenamento de eventos desacopla o processamento do comando da atualização do estado, facilitando a escalabilidade horizontal dos serviços.
+
+### Vantagens
+
+- **Histórico completo:** Permite saber exatamente como e quando cada alteração ocorreu.
+- **Flexibilidade para novas projeções:** Novos modelos de leitura podem ser criados a partir dos eventos, sem alterar o modelo de gravação.
+- **Resiliência:** Possibilita reprocessar eventos em caso de falhas ou bugs, corrigindo projeções sem perda de dados.
+- **Desacoplamento:** Facilita a separação entre gravação (comando) e leitura (consulta), alinhando-se ao padrão CQRS.
+
+### Trade-offs
+
+- **Complexidade:** A implementação é mais complexa do que CRUD tradicional, exigindo controle de versionamento, idempotência e mecanismos de replay.
+- **Custo de armazenamento:** O volume de dados pode crescer rapidamente, exigindo estratégias de snapshot e arquivamento.
+- **Curva de aprendizado:** Equipes precisam se adaptar ao novo paradigma, tanto para desenvolvimento quanto para manutenção e suporte.
+
+Em resumo, a modelagem event-sourcing no **VerxTransaction** foi adotada para garantir rastreabilidade, flexibilidade e robustez, mesmo com o aumento da complexidade e dos requisitos operacionais.
+
+## Escolha dos Bancos de Dados: Motivações, Vantagens e Trade-offs
+
+A arquitetura utiliza diferentes bancos de dados para atender requisitos específicos de cada contexto do sistema. A seguir, detalham-se os motivos da escolha de cada tecnologia, suas vantagens e os principais trade-offs:
+
+### MongoDB
+
+**Motivação:**  
+MongoDB foi escolhido para armazenar dados de consolidação diária devido à sua flexibilidade de modelagem, facilidade para lidar com grandes volumes de dados semi-estruturados e consultas rápidas para leitura.
+
+**Vantagens:**
+- Modelagem flexível (documentos JSON).
+- Escalabilidade horizontal nativa.
+- Consultas ágeis para grandes volumes de dados.
+- Ideal para cenários onde o esquema pode evoluir.
+
+**Trade-offs:**
+- Menor aderência a transações complexas.
+- Consistência eventual por padrão.
+- Pode exigir cuidados extras para garantir integridade referencial.
+
+---
+
+### Redis
+
+**Motivação:**  
+Redis é utilizado como cache e armazenamento temporário de tokens JWT e dados sensíveis, proporcionando alta performance em operações de leitura e escrita.
+
+**Vantagens:**
+- Latência extremamente baixa.
+- Suporte a estruturas de dados avançadas.
+- Ideal para cache, sessões e dados temporários.
+- Simples de operar em ambientes distribuídos.
+
+**Trade-offs:**
+- Dados armazenados em memória (volatilidade).
+- Não indicado para persistência de longo prazo.
+- Capacidade limitada ao tamanho da memória disponível.
+
+---
+
+### SQL Server
+
+**Motivação:**  
+SQL Server foi adotado para persistência de eventos (event-sourcing) e dados transacionais, aproveitando recursos avançados de integridade, transações e consultas relacionais.
+
+**Vantagens:**
+- Suporte robusto a transações ACID.
+- Ferramentas maduras de administração e backup.
+- Ideal para cenários que exigem integridade e rastreabilidade.
+- Suporte a consultas complexas e integrações empresariais.
+
+**Trade-offs:**
+- Escalabilidade horizontal mais complexa.
+- Licenciamento pode ser oneroso.
+- Menos flexível para mudanças frequentes de esquema.
+
+---
+
+### PostgreSQL
+
+**Motivação:**  
+PostgreSQL pode ser utilizado como alternativa relacional open-source, oferecendo recursos avançados, extensibilidade e custo reduzido.
+
+**Vantagens:**
+- Open-source, sem custos de licença.
+- Suporte a transações ACID e extensibilidade (ex: JSONB, índices avançados).
+- Comunidade ativa e grande ecossistema de extensões.
+- Bom equilíbrio entre performance e flexibilidade.
+
+**Trade-offs:**
+- Pode exigir tuning para workloads muito grandes.
+- Algumas features empresariais podem demandar extensões ou configuração adicional.
+- Menor integração nativa com ferramentas Microsoft.
+
+---
+
+### Considerações Gerais
+
+A combinação dessas tecnologias permite que cada serviço utilize o banco de dados mais adequado ao seu perfil de acesso e requisitos de negócio, promovendo desempenho, escalabilidade e flexibilidade. O principal trade-off é o aumento da complexidade operacional, exigindo conhecimento e monitoramento de múltiplas tecnologias, além de estratégias de integração e consistência entre os dados.
+
+
 Devido ao foco principal na definição e implementação da arquitetura, e à limitação de tempo, **não foram implementados testes unitários** nesta etapa. A prioridade foi garantir uma base arquitetural sólida e alinhada às melhores práticas de desenvolvimento.
 
-## Observabilidade:
+## Observabilidade
 A solução implementa observabilidade robusta por meio de logs centralizados, métricas e rastreamento distribuído. Todos os serviços geram logs estruturados (JSON) e enviam para o **ELK Stack** (Elasticsearch, Logstash, Kibana), permitindo análise detalhada de eventos, erros e auditoria. O **Logstash** processa e normaliza os logs, enquanto o **Elasticsearch** armazena e indexa para buscas rápidas. O **Kibana** oferece dashboards e visualizações acessíveis em:  
 **Kibana:** [http://localhost:5601](http://localhost:5601)
 
@@ -119,12 +226,11 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Adaptar a comunicação entre os serviços internos e o aplicativo mobile.
   - Validar token JWT antes de processar chamadas.
 - **Conexões**:
-  - Recebe requisições do app mobile.
+  - Recebe requisições do app mobile por meio de **RestServices**.
   - Utiliza `Authentication Server` para validação de JWT.
   - Comunica-se com:
-    - `Command API`
-    - `QueryApi`
-    - `WebHook [Transactions]` (produção de eventos Kafka)
+    - `CommandApi` por meio de **gRPC**
+    - `QueryApi` por meio de **gRPC**
 
 #### BFF Web [BFFWebFlow]
 - **CICD**: Sim
@@ -136,12 +242,11 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Adaptar a comunicação entre os serviços internos e a interface web.
   - Validar token JWT antes de processar chamadas.
 - **Conexões**:
-  - Recebe requisições da interface Web.
+  - Recebe requisições da interface Web por meio de **RestServices**.
   - Utiliza `Authentication Server` para validação de JWT.
   - Comunica-se com:
-    - `Command API`
-    - `QueryApi`
-    - `WebHook [Transactions]`
+    - `CommandApi` por meio de **gRPC**
+    - `QueryApi` por meio de **gRPC**
 
 ---
 
@@ -157,9 +262,9 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Prover **consultas** de consolidação diária.
 - **Conexões**:
   - Utilizado pelos BFFs.
-  - Consulta bancos: `SqlServer [DailyConsolidate]` e `MongoDB [DailyConsolidate]`.
+  - Consulta ao `MongoDB [DailyConsolidate]`.
 
-#### Command API
+#### CommandApi
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
@@ -168,8 +273,7 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 - **Responsabilidade**: 
   - Prover **modificações** e comandos relacionados à consolidação diária.
 - **Conexões**:
-  - Utilizado pelos BFFs.
-  - Envia eventos para o `Worker [DailyConsolidate]`.
+  - Envia eventos de Transaction para o `Worker [DailyConsolidate]`.
 
 #### Worker [DailyConsolidate]
 - **CICD**: Sim
@@ -181,11 +285,11 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
   - Consumir eventos de comando.
   - Manipular e persistir dados em bancos após os comandos.
 - **Conexões**:
-  - Recebe eventos do `Command API`.
+  - Consumir Eventos do `RabbitMQ`.
   - Interage com:
+    - `RabbitMQ [DailyConsolidate]`
     - `SqlServer [DailyConsolidate]`
     - `MongoDB [DailyConsolidate]`
-    - `RabbitMQ [DailyConsolidate]`
 
 ---
 
@@ -211,7 +315,7 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**:
   - Consumir eventos do `Kafka [TransactionEvent]`.
-  - Fazer requisições para a `CommandApi [DailyConsolidate]`
+  - Fazer requisições **gRPC** para a `CommandApi [DailyConsolidate]`
   - Atuar com Idepotência
   - Atuar com Resiliência se utilizando de menimos de retry e deadletter (RabbitMq)
 - **Conexões**:
@@ -221,8 +325,8 @@ Dessa forma, é possível testar facilmente os endpoints da solução, validar i
 
 ## 4. Componentes Externos
 
-### SqlServer [DailyConsolidate]
-- **Descrição**: Banco de dados relacional para dados consolidados diários.
+### SqlServer [VerxTransaction]
+- **Descrição**: Banco de dados relacional seguindo event-sourcing model para dados consolidados diários.
 - **Uso**: Consultas (`QueryApi`) e persistência de eventos processados (`Worker`).
 
 ### SqlServer [TransactionFlow]
@@ -316,9 +420,9 @@ sequenceDiagram
 ### 5.4. Transações
 1. Cliente → `BFF` → `WebHook [Transactions]`
 2. Kafka → `Worker [Transactions]`
-3. `Worker [Transactions]` → `Command API [DailyConsolidate]`
-4. `Command API [DailyConsolidate]` → `RabbitMQ`
-5. `Command API [DailyConsolidate]` → `SqlServer`
+3. `Worker [Transactions]` → `CommandApi [DailyConsolidate]`
+4. `CommandApi [DailyConsolidate]` → `RabbitMQ`
+5. `CommandApi [DailyConsolidate]` → `SqlServer`
 6. `RabbitMQ` → `Worker [DailyConsolidate]`
 7. `Worker [DailyConsolidate]` → `MongoDB`
 
@@ -328,7 +432,7 @@ sequenceDiagram
     participant WebHook
     participant Kafka
     participant Worker [Transactions]
-    participant Command API [DailyConsolidate]
+    participant CommandApi [DailyConsolidate]
     participant SqlServer
     participant RabbitMQ
     participant Worker [DailyConsolidate]
@@ -337,10 +441,10 @@ sequenceDiagram
     Cliente->>WebHook: Submete Transação
     WebHook->>Kafka: Produz um Evento de Transação
     Kafka->>Worker [Transactions]: Consume um Evento de Transação
-    Worker [Transactions]->>+Command API [DailyConsolidate]: Com mecanismo de Idepotencia e Resiliência
-    Command API [DailyConsolidate]->>SqlServer: Salva um evento de Transação
-    SqlServer->>Command API [DailyConsolidate]: Devolve um snapshot de consolidados
-    Command API [DailyConsolidate]->>-RabbitMQ: Produz evento de transação para o Rabbit
+    Worker [Transactions]->>+CommandApi [DailyConsolidate]: Com mecanismo de Idepotencia e Resiliência
+    CommandApi [DailyConsolidate]->>SqlServer: Salva um evento de Transação
+    SqlServer->>CommandApi [DailyConsolidate]: Devolve um snapshot de consolidados
+    CommandApi [DailyConsolidate]->>-RabbitMQ: Produz evento de transação para o Rabbit
     RabbitMQ->>Worker [DailyConsolidate]: Consume o evento de transação
     Worker [DailyConsolidate]->>MongoDB: Atualiza registo de consolidação no mongodb
 
@@ -350,7 +454,8 @@ sequenceDiagram
 ---
 
 ## 6. Observações Técnicas
-
+- **Worker [Transactions]** ficou redundante, visto que esse caminho poderia ser cortado. Poderia ser utilizado o **Worker [DailyConsolidate]**. Mas Seguindo uma estratégia de separação por contexto de negócio, vale a redundância, já que dentro do contexto, podemos ter operações de negócios bem expecíficas, sendo assim ganhasse um desacoplamento.
+- **Event-Driven e Event-Sourcing** O bando de dados segue uma estrutura orientada a evento.
 - **JWT como mecanismo de segurança** é central em todos os fluxos.
 - **Kafka vs RabbitMQ**:
   - Kafka → transações assíncronas, fluxo contínuo e distribuído.
