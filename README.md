@@ -16,6 +16,8 @@ A arquitetura segue o padrão **modular e orientado a serviços**, com separaç�
 
 O banco de dados **VerxTransaction** foi modelado seguindo o padrão **event-sourcing** para registrar e gerenciar o histórico de transações. Essa abordagem foi escolhida por diversos motivos:
 
+![Diagrama da Solução](./img/database-png.png)
+
 ### Por que event-sourcing?
 
 - **Rastreabilidade e Auditoria:** Cada alteração de estado é registrada como um evento imutável, permitindo reconstruir todo o histórico de uma transação e atender requisitos de auditoria.
