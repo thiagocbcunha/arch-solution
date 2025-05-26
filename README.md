@@ -141,6 +141,9 @@ Além dos logs, a telemetria é aplicada via instrumentação dos serviços com 
 Um exemplo do fluxo de retry pela visão do Jaeger.
 ![Execução dos Testes Unitários](./img/jaeger.png)
 
+Um exemplo do fluxo de retry e com sucesso.
+![Execução dos Testes Unitários](./img/jaeger-retry-success.png)
+
 Quando há sucesso no fluxo, vamos ver no Jaeger cada participante do processo como um todo.
 ![Execução dos Testes Unitários](./img/jaeger-success.png)
 
@@ -154,6 +157,7 @@ Após inicializar todas as imagens do Docker, é possível validar o funcionamen
 ### 1. Enviando uma Transação
 
 Este comando simula o envio de uma transação para o serviço de WebHook:
+Observação: Na primeira request, pode ser, que o Kafka ainda não esteja "100% startado no Docker", nesse caso va demorar um tempo de 20 segundos, logo após, todas as requestão será rápidas.
 
 ```bash
 curl --location 'http://localhost:8082' \
