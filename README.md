@@ -20,17 +20,12 @@ manutenção facilitada, adotando a arquitetura de microsserviços com separaç�
 
 Para garantir reprodutibilidade de ambientes e simplificar o deploy, foi adotado o uso de **Docker** para orquestração dos serviços. A inicialização pode levar alguns minutos na primeira execução, devido à criação das imagens.
 
+**Status Inicial**
+![Status Inicial](./img/docker-compose.png)
 
-<div style="display: flex; gap: 16px; align-items: flex-start;">
-  <figure style="width:48%; margin:0;">
-    <img src="./img/docker-compose.png" alt="Status Inicial" style="width:100%;" />
-    <figcaption style="text-align:center; font-size: 0.95em;">Status inicial dos containers após o <code>docker-compose up</code></figcaption>
-  </figure>
-  <figure style="width:48%; margin:0;">
-    <img src="./img/docker-ready.png" alt="Containers Prontos" style="width:100%;" />
-    <figcaption style="text-align:center; font-size: 0.95em;">Containers prontos e serviços em execução</figcaption>
-  </figure>
-</div>
+
+**Containers Prontos**
+![Containers Prontos](./img/docker-ready.png)
 
 ---
 
