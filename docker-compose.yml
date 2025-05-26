@@ -78,7 +78,7 @@ services:
       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
     mem_limit: ${MEM_LIMIT}
     depends_on:
-      verx_evaluation_mssql_liquibase_consolidated:
+      verx_rabbitmq_waiter:
         condition: service_completed_successfully
     networks:
       - verx_env

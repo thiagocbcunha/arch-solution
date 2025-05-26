@@ -474,8 +474,12 @@ Para facilitar o uso transversal de funcionalidades comuns entre diferentes solu
 
 As bibliotecas são empacotadas como um pacote NuGet local, permitindo fácil distribuição e atualização entre os projetos da organização. O NuGet local foi adaptado para garantir compatibilidade e facilitar o consumo em múltiplas soluções, centralizando a manutenção e evolução dos recursos compartilhados.
 
-Não foi utilizado o Nexus como repositório de pacotes, pois essa alternativa se mostrou inviável por questões técnicas específicas do ambiente e das restrições de infraestrutura.
+Existe o publish.ps1 na solution **verx-enterprise-libraries**, ao executar ele publica os pacotes referente a cada projeto.
+
+Exemplo de publicação.
 ![Execução dos Testes Unitários](./img/nuget-local.png)
+
+Não foi utilizado o Nexus como repositório de pacotes, pois essa alternativa se mostrou inviável por questões técnicas específicas do ambiente e das restrições de infraestrutura.
 
 
 **Testes Unitários**
