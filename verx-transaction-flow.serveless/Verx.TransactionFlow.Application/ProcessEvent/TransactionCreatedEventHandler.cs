@@ -1,29 +1,37 @@
 ﻿using MediatR;
-using System.Diagnostics;
-using Microsoft.Extensions.Logging;
-using Verx.TransactionFlow.Common.Contracts;
 using System.Net.Http.Json;
-using MassTransit.Configuration;
+using Verx.Enterprise.Tracing;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Verx.TransactionFlow.Domain.Options;
 using Verx.TransactionFlow.Domain.Event;
+using Verx.TransactionFlow.Domain.Options;
 
 namespace Verx.TransactionFlow.Application.ProcessEvent;
 
+
 /// <summary>
-/// Handler for the CreateUserCommand.
+/// Handles the processing of TransactionCreated events by sending the event data
+/// to the configured consolidated service endpoint.
 /// </summary>
-/// <param name="userRegistrationService"></param>
-public class TransactionCreatedEventHandler(ILogger<TransactionCreatedEventHandler> logger, IOptions<ConsolidatedSettings> options, IActivityTracing activityFactory, IHttpClientFactory httpClientFactory) : IRequestHandler<TransactionCreatedEventCommand, TransactionCreatedEventResult>
+/// <param name="logger">Logger instance for logging information and errors.</param>
+/// <param name="options">Options containing consolidated service settings.</param>
+/// <param name="tracer">Tracer for distributed tracing and diagnostics.</param>
+/// <param name="httpClientFactory">Factory to create HttpClient instances.</param>
+public class TransactionCreatedEventHandler(ILogger<TransactionCreatedEventHandler> logger, IOptions<ConsolidatedSettings> options, ITracer tracer, IHttpClientFactory httpClientFactory) : IRequestHandler<TransactionCreatedEventCommand, TransactionCreatedEventResult>
 {
+    /// <summary>
+    /// Handles the TransactionCreatedEventCommand by posting the event data to the consolidated service.
+    /// </summary>
+    /// <param name="request">The transaction created event command.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A result indicating the success of the operation.</returns>
     public async Task<TransactionCreatedEventResult> Handle(TransactionCreatedEventCommand request, CancellationToken cancellationToken)
     {
-        using var activity = activityFactory.Create<TransactionCreatedEventHandler>(ActivityKind.Internal);
-        activity.LogMessage("Processing TransactionCreated Event");
+        using var span = tracer.Span<TransactionCreatedEventHandler>();
+        span.NewMessage("Processing TransactionCreated Event");
 
         var httpClient = httpClientFactory.CreateClient();
 
-        // Serialize the request object to JSON content
         var jsonContent = JsonContent.Create((TransationCreated)request);
         var response = await httpClient.PostAsync($"{options.Value.UrlBase}/Consolidated", jsonContent, cancellationToken);
 

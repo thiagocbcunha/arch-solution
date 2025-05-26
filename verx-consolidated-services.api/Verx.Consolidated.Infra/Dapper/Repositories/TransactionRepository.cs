@@ -1,28 +1,15 @@
 ﻿using Dapper;
 using System.Data;
+using Verx.Enterprise.Tracing;
+using Microsoft.Extensions.Logging;
 using Verx.Consolidated.Domain.Entities;
 using Verx.Consolidated.Domain.Contracts;
 using Verx.Consolidated.Infra.Dapper.Queries;
 using Verx.Consolidated.Infra.Dapper.Contracts;
-using Verx.Consolidated.Application.CreateTransation;
-using Verx.Consolidated.Common.Contracts;
 
 namespace Verx.Consolidated.Infra.Dapper.Repositories;
 
-/// <summary>
-/// Repository implementation for managing <see cref="TransactionEntity"/> objects using Dapper.
-/// </summary>
-/// <remarks>
-/// This repository provides methods to add, update, and retrieve transaction entities and their associated events
-/// from a relational database using Dapper for data access. It supports operations such as inserting a new transaction
-/// with its initial event, updating a transaction by adding a new event, retrieving a transaction and its current event
-/// by ID, and fetching multiple transactions and their events within a specified date interval.
-/// <para>
-/// The repository relies on an <see cref="IConnectionFactory"/> to obtain database connections and uses SQL queries
-/// defined in <see cref="TransactionConstants"/> and <see cref="TransactionEventConstants"/> for data manipulation.
-/// </para>
-/// </remarks>
-public class TransactionRepository(IConnectionFactory connectionFactory, IActivityTracing activityTracing) : ITransactionRepository
+public class TransactionRepository(ILogger<TransactionRepository> logger, IConnectionFactory connectionFactory, ITracer tracer) : ITransactionRepository
 {
     /// <summary>
     /// Adds a new <see cref="TransactionEntity"/> to the database, including its current event.
@@ -31,12 +18,12 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task AddAsync(TransactionEntity transaction)
     {
-        using var activity = activityTracing.Create<TransactionRepository>();
+        using var span = tracer.Span<TransactionRepository>();
         var id = Guid.NewGuid();
         transaction.SetId(id);
 
-        activity.LogMessage($"Adding transaction with ID: {transaction.Id}");
-
+        span.NewMessage($"Adding transaction with ID: {transaction.Id}");
+        logger.LogInformation("Adding transaction: {transactionId}", transaction);
 
         try
         {
@@ -46,10 +33,12 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
 
             transaction.CurrentEvent.SetId(transactionId);
             await InsertEvent(transaction.CurrentEvent, connection);
+            span.Success();
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex.Message);
+            span.Failure(ex.Message);
+            throw;
         }
     }
 
@@ -62,8 +51,8 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
     /// </returns>
     public async Task<TransactionEntity?> GetByIdAsync(Guid id)
     {
-        using var activity = activityTracing.Create<TransactionRepository>();
-        activity.LogMessage($"Retrieving transaction with ID: {id}");
+        using var span = tracer.Span<TransactionRepository>();
+        span.NewMessage($"Retrieving transaction with ID: {id}");
 
         var sql =
             @$"{TransactionConstants.SelectBase} WHERE Id = @Id;
@@ -75,7 +64,7 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
 
         var documentEntity = await multi.ReadSingleOrDefaultAsync<TransactionEntity>();
         documentEntity?.SetCurrentEvent((await multi.ReadAsync<TransactionEventEntity>()).FirstOrDefault());
-
+        span.Success();
         return documentEntity;
     }
 
@@ -90,8 +79,9 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
     /// </returns>
     public async Task<IEnumerable<TransactionEntity>> GetManyByInternval(DateTime initialData, DateTime finalData)
     {
-        using var activity = activityTracing.Create<TransactionRepository>();
-        activity.LogMessage($"Retrieving transactions between {initialData} and {finalData}");
+        using var span = tracer.Span<TransactionRepository>();
+        span.NewMessage($"Retrieving transactions between {initialData} and {finalData}");
+        logger.LogInformation("Retrieving transactions between {initialData} and {finalData}", initialData, finalData);
 
         var sql =
             @$"{TransactionConstants.SelectBase} WHERE {TransactionConstants.TransactionDate} BETWEEN @InitialData AND @FinalData;
@@ -105,6 +95,8 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
         foreach (var transaction in transactionEntities)
             transaction.SetCurrentEvent(transactionEvents.FirstOrDefault(te => te.Id == transaction.Id));
 
+        span.Success();
+
         return transactionEntities;
     }
 
@@ -115,11 +107,13 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task UpdateAsync(TransactionEntity transaction)
     {
-        using var activity = activityTracing.Create<TransactionRepository>();
-        activity.LogMessage($"Updating transaction with ID: {transaction.Id}");
+        using var span = tracer.Span<TransactionRepository>();
+        span.NewMessage($"Updating transaction with ID: {transaction.Id}");
         using var connection = connectionFactory.Connection();
         connection.Open();
         await InsertEvent(transaction.CurrentEvent, connection);
+
+        span.Success();
     }
 
     /// <summary>
@@ -130,9 +124,12 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
     /// <returns>A task that represents the asynchronous operation. The task result contains the unique identifier of the inserted event.</returns>
     private async Task<Guid> InsertEvent(TransactionEventEntity entity, IDbConnection connection)
     {
-        using var activity = activityTracing.Create<TransactionRepository>();
-        activity.LogMessage($"Inserting transaction event with ID: {entity.Id}");
+        using var activity = tracer.Span<TransactionRepository>();
+        activity.NewMessage($"Inserting transaction event with ID: {entity.Id}");
+        logger.LogInformation("Inserting transaction event {entity}", entity);
+
         entity.ChangeCreateBy("Verx.Consolidated");
+
         return await connection.QuerySingleAsync<Guid>(TransactionEventConstants.InsertBase, entity);
     }
 
@@ -144,8 +141,8 @@ public class TransactionRepository(IConnectionFactory connectionFactory, IActivi
     /// <returns></returns>
     public async Task<decimal> GetTotalAmountByAccountId(DateTime initialData, DateTime finalData)
     {
-        using var activity = activityTracing.Create<TransactionRepository>();
-        activity.LogMessage($"Calculating total amount between {initialData} and {finalData}");
+        using var activity = tracer.Span<TransactionRepository>();
+        activity.NewMessage($"Calculating total amount between {initialData} and {finalData}");
         var sql = @$"{TransactionConstants.SelectSum} WHERE {TransactionConstants.TransactionDate} BETWEEN @InitialData AND @FinalData";
 
         using var connection = connectionFactory.Connection();

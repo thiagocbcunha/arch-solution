@@ -1,19 +1,16 @@
-﻿using MassTransit;
-using Verx.Consolidated.Domain.Dtos;
+﻿using MongoDB.Bson;
+using RabbitMQ.Client;
+using MongoDB.Bson.Serialization;
 using Verx.Consolidated.Infra.Mongo;
-using Verx.Consolidated.Infra.RabbitMQ;
+using Verx.Enterprise.MessageBroker;
+using Verx.Consolidated.Domain.Options;
 using Verx.Consolidated.Domain.Contracts;
-using Verx.Consolidated.Application.Consumers;
 using Microsoft.Extensions.Configuration;
-using Verx.Consolidated.Infra.Dapper.Contracts;
-using Verx.Consolidated.Infra.RabbitMQ.Options;
+using MongoDB.Bson.Serialization.Serializers;
+using Microsoft.Extensions.DependencyInjection;
 using Verx.Consolidated.Infra.Dapper.Connection;
 using Verx.Consolidated.Infra.Dapper.Repositories;
-using Microsoft.Extensions.DependencyInjection;
-using Verx.Consolidated.Common.Logging;
-using MongoDB.Bson.Serialization.Serializers;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson;
+using IConnectionFactory = Verx.Consolidated.Infra.Dapper.Contracts.IConnectionFactory;
 
 namespace Verx.Consolidated.Infra;
 
@@ -24,8 +21,6 @@ public static class Setup
         BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
 
         services.AddRabbitMQ(configuration);
-        services.AddScoped<IMessagingSender, MessageSender>();
-        services.AddScoped<ICorrelation, HttpContextVerxCorrelation>();
         services.AddScoped<IConnectionFactory, DapperConnectionFactory>();
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<IConsolidatedNSqlRepository, ConsolidatedRepository>();
@@ -35,31 +30,20 @@ public static class Setup
 
     private static IServiceCollection AddRabbitMQ(this IServiceCollection services, IConfiguration configuration)
     {
-        var rabbitConfiguration = new RabbitSettings();
-        configuration.GetRequiredSection(nameof(RabbitSettings)).Bind(rabbitConfiguration);
-
-
-        services.AddMassTransit(m =>
+        services.AddRabbit(sp =>
         {
-            m.AddConsumer<ConsolidatedConsumer>();
+            var rabbitSettings = configuration.GetSection(nameof(RabbitSettings)).Get<RabbitSettings>();
 
-            m.UsingRabbitMq((ctx, cfg) =>
+            ArgumentNullException.ThrowIfNull(rabbitSettings, "RabbitSettings cannot be null");
+
+            return new ConnectionFactory
             {
-                cfg.Host(rabbitConfiguration.Host, rabbitConfiguration.Port, rabbitConfiguration.VirtualHost, c =>
-                {
-                    c.Username(rabbitConfiguration.UserName);
-                    c.Password(rabbitConfiguration.Password);
-                });
-
-                cfg.Durable = false;
-
-                cfg.ConfigureEndpoints(ctx);
-
-                Bus.Factory.CreateUsingRabbitMq(cfg =>
-                {
-                    cfg.Message<ConsolidatedDto>(x => x.SetEntityName("VerxConsolidated.ConsolidatedDto.Event"));
-                });
-            });
+                Port = rabbitSettings.Port,
+                Uri = new Uri(rabbitSettings.Host),
+                UserName = rabbitSettings.UserName,
+                Password = rabbitSettings.Password,
+                VirtualHost = rabbitSettings.VirtualHost
+            };
         });
 
         return services;

@@ -20,18 +20,20 @@
 
   <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.10.0" />
-    <PackageReference Include="MassTransit" Version="8.2.2" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="8.2.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.5" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="Verx.Enterprise.Common" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.Correlation" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.Logging" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.MessageBroker" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.Tracing" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.WebApplications" Version="1.0.6" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Verx.TransactionFlow.Application\Verx.TransactionFlow.Application.csproj" />
-    <ProjectReference Include="..\Verx.TransactionFlow.Common\Verx.TransactionFlow.Common.csproj" />
     <ProjectReference Include="..\Verx.TransactionFlow.Domain\Verx.TransactionFlow.Domain.csproj" />
-    <ProjectReference Include="..\Verx.TransactionFlow.Infrastructure\Verx.TransactionFlow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

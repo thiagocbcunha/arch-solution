@@ -7,15 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MassTransit" Version="8.2.2" />
     <PackageReference Include="MediatR" Version="12.5.0" />
     <PackageReference Include="FluentValidation" Version="12.0.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
+    <PackageReference Include="Verx.Enterprise.Common" Version="1.0.6" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Verx.TransactionFlow.Common\Verx.TransactionFlow.Common.csproj" />
     <ProjectReference Include="..\Verx.TransactionFlow.Domain\Verx.TransactionFlow.Domain.csproj" />
   </ItemGroup>
 

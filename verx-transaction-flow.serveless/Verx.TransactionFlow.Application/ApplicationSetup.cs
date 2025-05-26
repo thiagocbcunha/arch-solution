@@ -1,6 +1,6 @@
 ﻿using MediatR;
 using FluentValidation;
-using Verx.TransactionFlow.Common.Validation;
+using Verx.Enterprise.Common.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Verx.TransactionFlow.Application;

@@ -1,5 +1,10 @@
-﻿namespace Verx.TransactionFlow.Domain.Event;
+﻿using RabbitMQ.Client;
+using Verx.Enterprise.MessageBroker.RabbitMQ;
 
+namespace Verx.TransactionFlow.Domain.Event;
+
+[Exchange("transationcreated_exchange", ExchangeType.Fanout)]
+[RetryPolicy(5, 10000, exponecial: true)]
 public class TransationCreated
 {
     public Guid TransactionId { get; init; }

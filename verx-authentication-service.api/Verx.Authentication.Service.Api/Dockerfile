@@ -3,9 +3,15 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
+
+COPY ["nuget-local", "Verx.TransactionFlow.Serveless/nuget-local"]
+COPY ["NuGet.Config", "Verx.TransactionFlow.Serveless/NuGet.Config"]
 COPY ["Verx.Authentication.Service.Api/Verx.Authentication.Service.Api.csproj", "Verx.Authentication.Service.Api/"]
+
 RUN dotnet restore "Verx.Authentication.Service.Api/Verx.Authentication.Service.Api.csproj"
+
 COPY . .
+
 WORKDIR "/src/Verx.Authentication.Service.Api"
 RUN dotnet build "Verx.Authentication.Service.Api.csproj" -c Release -o /app/build
 

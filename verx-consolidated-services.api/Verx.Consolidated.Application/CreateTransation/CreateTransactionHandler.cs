@@ -1,29 +1,28 @@
 ﻿using MediatR;
 using System.Text;
+using Verx.Enterprise.Tracing;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 using Verx.Consolidated.Domain.Dtos;
-using Verx.Consolidated.Common.Contracts;
 using Verx.Consolidated.Domain.Contracts;
+using Verx.Consolidated.Domain.Entities;
+using Verx.Enterprise.MessageBroker.RabbitMQ;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Verx.Consolidated.Application.CreateTransation;
 
-/// <summary>
-/// Handler for the CreateUserCommand.
-/// </summary>
-/// <param name="userRegistrationService"></param>
-public class CreateTransactionHandler(IActivityTracing activityTracing, ITransactionRepository transactionRepository, IMessagingSender messagingSender) : IRequestHandler<CreateTransactionCommand, CreateTransactionResult>
+public class CreateTransactionHandler(ILogger<CreateTransactionHandler> logger, IServiceProvider serviceProvider, ITransactionRepository transactionRepository, IRabbitProducer<ConsolidatedDto> rabbitProducer) : IRequestHandler<CreateTransactionCommand, CreateTransactionResult>
 {
-    /// <summary>
-    /// Handles the CreateUserCommand.
-    /// </summary>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    private readonly ITracer tracer = serviceProvider.GetRequiredService<ITracer>();
     public async Task<CreateTransactionResult> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
     {
-        using var activity = activityTracing.Create<CreateTransactionHandler>();
+        using var activity = tracer.Span<CreateTransactionHandler>();
 
-        activity.LogMessage($"Creating transaction with ID: {request.TransactionId}");
+        logger.LogInformation("Creating transaction: {request}", request);
+        activity.NewMessage($"Creating transaction with ID: {request.TransactionId}");
+
+        var transactionEntity = (TransactionEntity)request;
+        transactionEntity.CurrentEvent.ChangeCreateBy("Verx.Consolidated");
 
         await transactionRepository.AddAsync(request);
         var total = await transactionRepository.GetTotalAmountByAccountId(DateTime.UtcNow.Date, DateTime.UtcNow.AddDays(1));
@@ -33,7 +32,7 @@ public class CreateTransactionHandler(IActivityTracing activityTracing, ITransac
 
         var consolidatedDto = new ConsolidatedDto { Id = new Guid(hash), Total = total, UpdateDate = DateTime.Now };
 
-        await messagingSender.Send(consolidatedDto);
+        await rabbitProducer.PublishAsync(consolidatedDto);
 
         activity.Success();
 

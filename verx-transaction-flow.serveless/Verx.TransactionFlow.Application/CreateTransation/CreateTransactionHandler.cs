@@ -1,15 +1,20 @@
 ﻿using MediatR;
+using Verx.Enterprise.Tracing;
+using Microsoft.Extensions.Logging;
 using Verx.TransactionFlow.Domain.Event;
-using Verx.TransactionFlow.Domain.Contracts;
-using Verx.TransactionFlow.Common.Contracts;
+using Verx.Enterprise.MessageBroker.Kafka;
 
 namespace Verx.TransactionFlow.Application.CreateTransation;
 
 /// <summary>
-/// Handler for the CreateUserCommand.
+/// Handles the creation of a new transaction by generating a new transaction ID and date,
+/// publishing a <see cref="TransationCreated"/> event to Kafka, and returning the result.
 /// </summary>
-/// <param name="userRegistrationService"></param>
-public class CreateTransactionHandler(IActivityTracing activityTracing, IKafkaProducer<TransationCreated> producer) : IRequestHandler<CreateTransactionCommand, CreateTransactionResult>
+/// <remarks>
+/// This handler uses distributed tracing and logging for observability, and ensures that
+/// each transaction is uniquely identified and timestamped before being published.
+/// </remarks>
+public class CreateTransactionHandler(ILogger<CreateTransactionHandler> logger, ITracer activityTracing, IKafkaProducer<TransationCreated> producer) : IRequestHandler<CreateTransactionCommand, CreateTransactionResult>
 {
     /// <summary>
     /// Handles the CreateUserCommand.
@@ -19,16 +24,17 @@ public class CreateTransactionHandler(IActivityTracing activityTracing, IKafkaPr
     /// <returns></returns>
     public async Task<CreateTransactionResult> Handle(CreateTransactionCommand request, CancellationToken cancellationToken)
     {
-        using var activity = activityTracing.Create<CreateTransactionHandler>();
+        using var span = activityTracing.Span<CreateTransactionHandler>();
 
-        activity.LogMessage($"Creating transaction with ID: {request.TransactionId}");
+        span.NewMessage($"Creating transaction with ID: {request.TransactionId}");
+        logger.LogInformation("Creating transaction with ID: {TransactionId}", request.TransactionId);
 
         request.TransactionId = Guid.NewGuid();
         request.TransactionDate = DateTime.UtcNow;
 
-        await producer.SendMessageAsync(request, cancellationToken);
+        await producer.PublishAsync(request, cancellationToken);
 
-        activity.Success();
+        span.Success();
 
         return new CreateTransactionResult(true);
     }

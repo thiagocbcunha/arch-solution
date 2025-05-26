@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="MessageBrokers\RabbitMQ\MessageSender.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Confluent.Kafka" Version="2.10.0" />
     <PackageReference Include="Confluent.Kafka.Extensions.Diagnostics" Version="0.5.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.5" />

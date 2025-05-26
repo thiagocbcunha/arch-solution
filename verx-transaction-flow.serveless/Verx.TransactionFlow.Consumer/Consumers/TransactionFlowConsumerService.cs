@@ -1,70 +1,53 @@
 ﻿using MediatR;
-using System.Diagnostics;
-using System.Threading.Channels;
+using Verx.Enterprise.Tracing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Verx.Enterprise.MessageBroker;
 using Verx.TransactionFlow.Domain.Event;
-using Verx.TransactionFlow.Common.Contracts;
 using Verx.TransactionFlow.Application.ProcessEvent;
-using Verx.TransactionFlow.Infrastructure.MessageBrokers;
 
 namespace Verx.TransactionFlow.Consumer.Consumers;
 
-/// <summary>
-/// Represents a background service that consumes transaction flow events from a Kafka topic.
-/// </summary>
-/// <param name="logger"></param>
-/// <param name="channel"></param>
-/// <param name="activityFactory"></param>
 public class TransactionFlowConsumerService
-    (ILogger<TransactionFlowConsumerService> logger, Channel<EventMessage<TransationCreated>> channel, IActivityTracing activityFactory, IMediator mediator) : BackgroundService
+    (ILogger<TransactionFlowConsumerService> logger, IChannel<TransationCreated> channel, ITracer tracer, IMediator mediator) : BackgroundService
 {
-    /// <summary>
-    /// Executes the background service.
-    /// </summary>
-    /// <param name="stoppingToken"></param>
-    /// <returns></returns>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!await StartConsuming(stoppingToken))
         {
-            logger.LogInformation("Kafka consumer service is restarting in 5 seconds.");
+            logger.LogInformation("TransactionFlowConsumerService consumer service is restarting in 5 seconds.");
             await Task.Delay(5000, stoppingToken);
         }
     }
 
-    /// <summary>
-    /// Starts consuming messages from the Kafka topic.
-    /// </summary>
-    /// <param name="cancellationToken">A cancellation token.</param>
     public async Task<bool> StartConsuming(CancellationToken cancellationToken)
     {
         logger.LogInformation($"Starting Kafka consumer background service.");
 
         try
         {
-            await foreach (var evnet in channel.Reader.ReadAllAsync(cancellationToken))
+            await foreach (var evnet in channel.ConsumeAsync(cancellationToken))
             {
-                using var envtActivity = activityFactory.Create<TransactionFlowConsumerService>(ActivityKind.Internal);
+                using var span = tracer.Span<TransactionFlowConsumerService>();
                 try
                 {
-                    envtActivity.LogMessage($"Handler new message: {evnet.Message.TransactionId}");
-
-                    var result = mediator.Send((TransactionCreatedEventCommand)evnet.Message, cancellationToken);
-
-                    evnet.Ack();
-                    envtActivity.Success();
+                    span.NewMessage($"Handler new message: {evnet.TransactionId}");
+                    var result = await mediator.Send((TransactionCreatedEventCommand)evnet, cancellationToken);
+                    span.Success();
                 }
                 catch (Exception ex)
                 {
-                    envtActivity.Failure(ex.Message);
-                    throw;
+                    span.Failure(ex.Message);
+                    await channel.RaiserError(span);
                 }
             }
 
             return true;
         }
-        catch { }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error consuming messages from Kafka topic.");
+        }
 
         return false;
     }

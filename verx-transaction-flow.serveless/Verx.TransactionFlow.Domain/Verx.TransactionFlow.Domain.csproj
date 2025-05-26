@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Verx.Enterprise.MessageBroker" Version="1.0.6" />
+  </ItemGroup>
+  
 </Project>

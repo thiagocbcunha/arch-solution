@@ -1,31 +1,23 @@
 ﻿using MediatR;
-using Verx.Consolidated.Common.Contracts;
+using Verx.Enterprise.Tracing;
+using Microsoft.Extensions.Logging;
 using Verx.Consolidated.Domain.Contracts;
 
 namespace Verx.Consolidated.Application.GetAllConsolidated;
 
-/// <summary>
-/// Handler for the CreateUserCommand.
-/// </summary>
-/// <param name="userRegistrationService"></param>
-public class GetAllConsolidatedHandler(IActivityTracing activityTracing, IConsolidatedNSqlRepository consolidatedNSqlRepository) : IRequestHandler<GetAllConsolidatedCommand, GetAllConsolidatedResult>
+public class GetAllConsolidatedHandler(ILogger<GetAllConsolidatedHandler> logger,  ITracer tracer, IConsolidatedNSqlRepository consolidatedNSqlRepository) : IRequestHandler<GetAllConsolidatedCommand, GetAllConsolidatedResult>
 {
-    /// <summary>
-    /// Handles the CreateUserCommand.
-    /// </summary>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<GetAllConsolidatedResult> Handle(GetAllConsolidatedCommand request, CancellationToken cancellationToken)
+    public Task<GetAllConsolidatedResult> Handle(GetAllConsolidatedCommand request, CancellationToken cancellationToken)
     {
-        using var activity = activityTracing.Create<GetAllConsolidatedHandler>();
+        using var activity = tracer.Span<GetAllConsolidatedHandler>();
 
-        activity.LogMessage($"Getting all consolidated transactions");
+        activity.NewMessage($"Getting all consolidated transactions");
+        logger.LogInformation("Getting all consolidated transactions: {request}", request);
 
         var consolidatedDtos = consolidatedNSqlRepository.GetMany(x => x.Date == request.Date);
 
         activity.Success();
 
-        return new GetAllConsolidatedResult(consolidatedDtos);
+        return Task.FromResult(new GetAllConsolidatedResult(consolidatedDtos));
     }
 }

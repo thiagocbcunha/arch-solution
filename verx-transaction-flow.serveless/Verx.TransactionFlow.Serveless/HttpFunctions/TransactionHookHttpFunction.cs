@@ -1,21 +1,21 @@
 ﻿using MediatR;
 using System.Text.Json;
-using System.Diagnostics;
+using Verx.Enterprise.Tracing;
+using Verx.Enterprise.WebApplications;
 using Google.Cloud.Functions.Framework;
-using Verx.TransactionFlow.Common.Contracts;
-using Verx.TransactionFlow.Serveless.Common;
 using Verx.Authentication.Service.Application;
 
 namespace Verx.TransactionFlow.Serveless.HttpFunctions;
 
-public class TransactionHookHttpFunction(IMediator mediator, IActivityTracing activityFactory) : IHttpFunction
+public class TransactionHookHttpFunction(ILogger<TransactionHookHttpFunction> logger, IMediator mediator, ITracer tracer) : IHttpFunction
 {
     public async Task HandleAsync(HttpContext context)
     {
-        using var activity = activityFactory.Start<TransactionHookHttpFunction>(ActivityKind.Server);
+        using var span = tracer.Span<TransactionHookHttpFunction>();
         try
         {
-            activity.LogMessage("Starting request.");
+            span.NewMessage("Starting request.");
+            logger.LogInformation("Starting request.");
 
             using var reader = new StreamReader(context.Request.Body);
             var createTransactionCommand = await JsonSerializer.DeserializeAsync(reader.BaseStream, ApplicationJsonSerialiazerContext.Default.CreateTransactionCommand);
@@ -24,12 +24,12 @@ public class TransactionHookHttpFunction(IMediator mediator, IActivityTracing ac
 
             var result = await mediator.Send(createTransactionCommand);
 
+            span.Success();
             await context.Ok(result);
-            activity.Success();
         }
         catch (Exception ex)
         {
-            activity.Failure(ex.Message);
+            span.Failure(ex.Message);
             throw;
         }
     }

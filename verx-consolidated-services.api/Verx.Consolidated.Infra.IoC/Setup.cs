@@ -10,7 +10,7 @@ public static class Setup
     public static IServiceCollection SetupApplication(this IServiceCollection service, IConfiguration configuration)
     {
         service.AddDomain();
-        service.AddApplication();
+        service.AddApplication(configuration);
         service.AddInfrastructure(configuration);
 
         return service;

@@ -1,0 +1,60 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Verx.Enterprise.Common", "Verx.Enterprise.Common\Verx.Enterprise.Common.csproj", "{8C783B35-9C97-05BC-96E8-80A28FDC954F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Verx.Enterprise.Correlation", "Verx.Enterprise.Correlation\Verx.Enterprise.Correlation.csproj", "{BCDF2A7F-305C-948D-1E36-27309430F6FB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Verx.Enterprise.Logging", "Verx.Enterprise.Logging\Verx.Enterprise.Logging.csproj", "{8ADA32FE-F137-8E85-EB08-CBDD115816C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Verx.Enterprise.MessageBroker", "Verx.Enterprise.MessageBroker\Verx.Enterprise.MessageBroker.csproj", "{60B24279-FE44-17BF-FEC0-A730971336E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Verx.Enterprise.Tracing", "Verx.Enterprise.Tracing\Verx.Enterprise.Tracing.csproj", "{7F25BC07-9B2B-B113-1979-510DD468C71C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Verx.Enterprise.WebApplications", "Verx.Enterprise.WebApplications\Verx.Enterprise.WebApplications.csproj", "{3CEF252D-98BB-59A7-4237-0FA081E6191B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		publish.ps1 = publish.ps1
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8C783B35-9C97-05BC-96E8-80A28FDC954F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8C783B35-9C97-05BC-96E8-80A28FDC954F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8C783B35-9C97-05BC-96E8-80A28FDC954F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8C783B35-9C97-05BC-96E8-80A28FDC954F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCDF2A7F-305C-948D-1E36-27309430F6FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCDF2A7F-305C-948D-1E36-27309430F6FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCDF2A7F-305C-948D-1E36-27309430F6FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCDF2A7F-305C-948D-1E36-27309430F6FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8ADA32FE-F137-8E85-EB08-CBDD115816C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8ADA32FE-F137-8E85-EB08-CBDD115816C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8ADA32FE-F137-8E85-EB08-CBDD115816C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8ADA32FE-F137-8E85-EB08-CBDD115816C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{60B24279-FE44-17BF-FEC0-A730971336E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{60B24279-FE44-17BF-FEC0-A730971336E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{60B24279-FE44-17BF-FEC0-A730971336E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{60B24279-FE44-17BF-FEC0-A730971336E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F25BC07-9B2B-B113-1979-510DD468C71C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F25BC07-9B2B-B113-1979-510DD468C71C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F25BC07-9B2B-B113-1979-510DD468C71C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F25BC07-9B2B-B113-1979-510DD468C71C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3CEF252D-98BB-59A7-4237-0FA081E6191B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3CEF252D-98BB-59A7-4237-0FA081E6191B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3CEF252D-98BB-59A7-4237-0FA081E6191B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3CEF252D-98BB-59A7-4237-0FA081E6191B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C2725591-5FA4-470F-AB02-FB88868A9AC0}
+	EndGlobalSection
+EndGlobal

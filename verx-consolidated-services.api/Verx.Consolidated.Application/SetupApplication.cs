@@ -1,19 +1,40 @@
 ﻿using MediatR;
+using RabbitMQ.Client;
 using FluentValidation;
-using Verx.Consolidated.Common.Validation;
+using Verx.Enterprise.MessageBroker;
+using Verx.Consolidated.Domain.Options;
+using Verx.Enterprise.Common.Validation;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Verx.Consolidated.Application.Consumers;
 
 namespace Verx.Consolidated.Application;
 
 public static class SetupApplication
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
+        services.AddRabbit(sp =>
+        {
+            var rabbitSettings = configuration.GetSection(nameof(RabbitSettings)).Get<RabbitSettings>();
+
+            ArgumentNullException.ThrowIfNull(rabbitSettings, "RabbitSettings cannot be null");
+
+            if (!Uri.TryCreate(rabbitSettings.Host, UriKind.Absolute, out Uri uri))
+                throw new ArgumentException("Invalid RabbitMQ host URI", nameof(rabbitSettings.Host));
+
+            return new ConnectionFactory
+            {
+                Uri = uri,
+                Port = rabbitSettings.Port,
+                UserName = rabbitSettings.UserName,
+                Password = rabbitSettings.Password,
+                VirtualHost = rabbitSettings.VirtualHost
+            };
+        });
+
         services.AddValidators();
-        services.AddScoped<ConsolidatedConsumer>();
         services.AddValidatorsFromAssemblies(assemblies);
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(assemblies));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

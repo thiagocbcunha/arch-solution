@@ -9,11 +9,16 @@
   <ItemGroup>
     <PackageReference Include="Google.Cloud.Functions.Framework" Version="3.0.1" />
     <PackageReference Include="Google.Cloud.Functions.Hosting" Version="3.0.1" />
+    <PackageReference Include="Verx.Enterprise.Common" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.Correlation" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.Logging" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.MessageBroker" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.Tracing" Version="1.0.6" />
+    <PackageReference Include="Verx.Enterprise.WebApplications" Version="1.0.6" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Verx.TransactionFlow.Application\Verx.TransactionFlow.Application.csproj" />
-    <ProjectReference Include="..\Verx.TransactionFlow.Infrastructure\Verx.TransactionFlow.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
