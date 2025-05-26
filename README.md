@@ -23,7 +23,7 @@ Para garantir reprodutibilidade de ambientes e simplificar o deploy, foi adotado
 **Status Inicial**
 ![Status Inicial](./img/docker-compose.png)
 
-
+<br />
 **Containers Prontos**
 ![Containers Prontos](./img/docker-ready.png)
 
