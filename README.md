@@ -141,6 +141,9 @@ Além dos logs, a telemetria é aplicada via instrumentação dos serviços com 
 Um exemplo do fluxo de retry pela visão do Jaeger.
 ![Execução dos Testes Unitários](./img/jaeger.png)
 
+Quando há sucesso no fluxo, vamos ver no Jaeger cada participante do processo como um todo.
+![Execução dos Testes Unitários](./img/jaeger-success.png)
+
 Essas ferramentas garantem visibilidade operacional, facilitam troubleshooting e apoiam a evolução contínua do sistema.
 
 
