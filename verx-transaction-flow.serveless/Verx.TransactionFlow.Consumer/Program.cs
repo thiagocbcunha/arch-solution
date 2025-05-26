@@ -26,7 +26,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddHostedService<TransactionFlowConsumerService>();
 
         services.AddHttpClient();
-        services.AddApplication();
+        services.AddApplication(context.Configuration);
 
         var tracerBuilder = services.TraceBuilder(() =>
         {

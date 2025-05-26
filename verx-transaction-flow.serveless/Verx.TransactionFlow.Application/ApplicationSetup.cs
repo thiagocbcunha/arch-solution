@@ -1,15 +1,19 @@
 ﻿using MediatR;
 using FluentValidation;
 using Verx.Enterprise.Common.Validation;
+using Microsoft.Extensions.Configuration;
+using Verx.TransactionFlow.Domain.Options;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Verx.TransactionFlow.Application;
 
 public static class SetupApplication
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration configuration)
     {
         var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+        services.Configure<ConsolidatedSettings>(configuration.GetSection(nameof(ConsolidatedSettings)));
 
         services.AddValidators();
         services.AddValidatorsFromAssemblies(assemblies);
