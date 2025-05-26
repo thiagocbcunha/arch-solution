@@ -1,0 +1,11 @@
+filebeat.inputs:
+  - type: container
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    processors:
+      - add_docker_metadata: ~
+      
+output.logstash:
+  enabled: true
+  hosts: ["verx_evaluation_logstash:5044"]
+  index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"

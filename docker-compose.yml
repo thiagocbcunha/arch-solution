@@ -1,4 +1,4 @@
-name: "verxSolution"
+name: "verx-solution"
 services:
   verx_evaluation_mssqlserver:
     build:
@@ -157,6 +157,7 @@ services:
       - verx_evaluation_jaeger
     networks:
       - verx_env
+
   verx_evaluation_zookeeper:
     build:
       context: Docker/Zookeeper/
@@ -199,6 +200,20 @@ services:
     volumes:
       - ./Docker/RabbitMQ/data/:/var/lib/rabbitmq/
       - ./Docker/RabbitMQ/log/:/var/log/rabbitmq
+    networks:
+      - verx_env
+    
+  verx_evaluation_filebeat:
+    build:
+      context: Docker/Filebeat/
+    image: log-filebeat
+    container_name: verx_filebeat
+    volumes:
+      - ./Docker/Filebeat:/var/lib/docker/containers:ro
+      - ./Docker/Filebeat/docker.sock:/var/run/docker.sock
+      - ./Docker/Filebeat/config/filebeat.yml:/usr/share/Filebeat/filebeat.yml:ro
+    depends_on:
+      - verx_evaluation_logstash
     networks:
       - verx_env
 
@@ -246,12 +261,17 @@ services:
       context: verx-transaction-flow.serveless
       dockerfile: Verx.TransactionFlow.Consumer/Dockerfile
     environment:
-      - ASPNETCORE_ENVIRONMENT=Release
-      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - ASPNETCORE_ENVIRONMENT=Develeop
+      - RabbitSettings__Host=amqp://verx_evaluation_rabbitmq
       - KafkaSettings__BootstrapServers=verx_evaluation_kafka:29092
       - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
       - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
       - ConsolidatedSettings__UrlBase=http://verx_consolidate_command_api:8085
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       - verx_evaluation_mongo
     networks:
@@ -264,14 +284,19 @@ services:
       context: verx-transaction-flow.serveless
       dockerfile: Verx.TransactionFlow.Serveless/Dockerfile
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_ENVIRONMENT=Release
       - ASPNETCORE_HTTP_PORTS=8082
-      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - RabbitSettings__Host=amqp://verx_evaluation_rabbitmq
       - KafkaSettings__BootstrapServers=verx_evaluation_kafka:29092
       - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
       - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
     ports:
       - "8082:8082"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       - verx_evaluation_mongo
     networks:
@@ -282,36 +307,70 @@ services:
     image: ${DOCKER_REGISTRY-}verxconsolidatequeryapi
     build:
       context: verx-consolidated-services.api
-      dockerfile: Verx.Consolidated.Onboarding.Query.API/Dockerfile
+      dockerfile: Verx.Consolidated.Query.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Release
       - ASPNETCORE_HTTP_PORTS=8083
-      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - RabbitSettings__Host=amqp://verx_evaluation_rabbitmq
+      - LogstashEndpoint=http://verx_evaluation_logstash:5044
       - ConnectionStrings__MongoDB=mongodb://verx_evaluation_mongo:27017
       - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
-      - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
     ports:
       - "8083:8083"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       - verx_evaluation_mongo
     networks:
       - verx_env
+
   verx_consolidate_command_api:
     container_name: verx_consolidate_command_api
     image: ${DOCKER_REGISTRY-}verxconsolidatecommandapi
     build:
       context: verx-consolidated-services.api
-      dockerfile: Verx.Consolidated.Onboarding.Command.API/Dockerfile
+      dockerfile: Verx.Consolidated.Command.API/Dockerfile
     environment:
       - ASPNETCORE_ENVIRONMENT=Release
       - ASPNETCORE_HTTP_PORTS=8085
-      - RabbitSettings__Host=verx_evaluation_rabbitmq
+      - RabbitSettings__Host=amqp://verx_evaluation_rabbitmq
+      - LogstashEndpoint=http://verx_evaluation_logstash:5044
       - ConnectionStrings__MongoDB=mongodb://verx_evaluation_mongo:27017
       - ConnectionStrings__VerxConsolidatedDB=Server=verx_evaluation_mssqlserver,1433;Database=VerxTransaction;User Id=sa;Password=SqlServer2022!;
       - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
-      - ObservabilitySettings__LogstashEndpoint=http://verx_evaluation_logstash:5044
     ports:
       - "8085:8085"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    depends_on:
+      - verx_evaluation_mongo
+    networks:
+      - verx_env
+
+  verx_consolidate_worker:
+    container_name: verx_consolidate_worker
+    image: ${DOCKER_REGISTRY-}verxconsolidateworker
+    build:
+      context: verx-consolidated-services.api
+      dockerfile: Verx.Consolidated.Worker/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Release
+      - RabbitSettings__Host=amqp://verx_evaluation_rabbitmq
+      - LogstashEndpoint=http://verx_evaluation_logstash:5044
+      - ConnectionStrings__MongoDB=mongodb://verx_evaluation_mongo:27017
+      - ConnectionStrings__VerxConsolidatedDB=Server=verx_evaluation_mssqlserver,1433;Database=VerxTransaction;User Id=sa;Password=SqlServer2022!;
+      - ObservabilitySettings__OTELEndpoint=http://verx_evaluation_otelcollector:4317
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     depends_on:
       - verx_evaluation_mongo
     networks:
@@ -322,6 +381,8 @@ volumes:
     name: elasticsearch
   mongo:
     name: mongo
+  nexus-data:
+    name: nexus-data
 
 networks:
   verx_env:

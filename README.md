@@ -119,17 +119,25 @@ PostgreSQL pode ser utilizado como alternativa relacional open-source, oferecend
 A combinação dessas tecnologias permite que cada serviço utilize o banco de dados mais adequado ao seu perfil de acesso e requisitos de negócio, promovendo desempenho, escalabilidade e flexibilidade. O principal trade-off é o aumento da complexidade operacional, exigindo conhecimento e monitoramento de múltiplas tecnologias, além de estratégias de integração e consistência entre os dados.
 
 
-Devido ao foco principal na definição e implementação da arquitetura, e à limitação de tempo, **não foram implementados testes unitários** nesta etapa. A prioridade foi garantir uma base arquitetural sólida e alinhada às melhores práticas de desenvolvimento.
-
 ## Observabilidade
 A solução implementa observabilidade robusta por meio de logs centralizados, métricas e rastreamento distribuído. Todos os serviços geram logs estruturados (JSON) e enviam para o **ELK Stack** (Elasticsearch, Logstash, Kibana), permitindo análise detalhada de eventos, erros e auditoria. O **Logstash** processa e normaliza os logs, enquanto o **Elasticsearch** armazena e indexa para buscas rápidas. O **Kibana** oferece dashboards e visualizações acessíveis em:  
 **Kibana:** [http://localhost:5601](http://localhost:5601)
 
 Para facilitar a análise dos logs, é importante criar índices no Elasticsearch. Recomenda-se criar um índice específico para os logs da solução, por exemplo, `verx_index*`. No Kibana, acesse **Stack Management > Index Patterns** e crie um novo padrão de índice utilizando o nome configurado no Logstash (ex: `verx_index*`). Isso permitirá buscas rápidas, filtros por campos (como nível de log, serviço, timestamp) e criação de dashboards personalizados para monitoramento e troubleshooting.
 
+**Uso de CorrelationId via HTTP Headers e Impacto nos Logs**
+
+Para rastrear requisições ponta a ponta entre microsserviços, a solução utiliza o conceito de **CorrelationId**. Esse identificador único é gerado no início do fluxo (geralmente pelo gateway ou BFF) e propagado entre os serviços por meio de um header HTTP customizado, como `X-Correlation-Id`. Cada serviço, ao receber uma requisição, lê ou repassa esse header em chamadas subsequentes.
+
+Nos logs estruturados enviados ao **Elasticsearch**, o CorrelationId é incluído como um campo adicional em cada entrada de log. Isso permite correlacionar facilmente todos os eventos, erros e métricas relacionados a uma mesma requisição ou transação, facilitando o troubleshooting e a análise de fluxos distribuídos no Kibana. Dessa forma, é possível filtrar e visualizar todo o caminho percorrido por uma requisição no sistema, mesmo atravessando múltiplos serviços e tecnologias.
+
+**Uso do Padrão OpenTelemetry**
 
 Além dos logs, a telemetria é aplicada via instrumentação dos serviços com **OpenTelemetry**, coletando métricas de performance, disponibilidade e rastreamento de requisições ponta a ponta. O rastreamento distribuído é visualizado no **Jaeger**, facilitando a identificação de gargalos e análise de fluxos entre microsserviços:  
 **Jaeger:** [http://localhost:16686](http://localhost:16686)
+
+Um exemplo do fluxo de retry pela visão do Jaeger.
+![Execução dos Testes Unitários](./img/jaeger.png)
 
 Essas ferramentas garantem visibilidade operacional, facilitam troubleshooting e apoiam a evolução contínua do sistema.
 
@@ -454,6 +462,27 @@ sequenceDiagram
 ---
 
 ## 6. Observações Técnicas
+
+**Bibliotecas Compartilhadas**
+
+Para facilitar o uso transversal de funcionalidades comuns entre diferentes soluções, foi criado o projeto **verx-enterprise-libraries**. Esse projeto reúne bibliotecas utilitárias e componentes reutilizáveis, como helpers, middlewares, extensões e integrações, promovendo padronização e redução de duplicidade de código.
+
+As bibliotecas são empacotadas como um pacote NuGet local, permitindo fácil distribuição e atualização entre os projetos da organização. O NuGet local foi adaptado para garantir compatibilidade e facilitar o consumo em múltiplas soluções, centralizando a manutenção e evolução dos recursos compartilhados.
+
+Não foi utilizado o Nexus como repositório de pacotes, pois essa alternativa se mostrou inviável por questões técnicas específicas do ambiente e das restrições de infraestrutura.
+![Execução dos Testes Unitários](./img/nuget-local.png)
+
+
+**Testes Unitários**
+
+Os testes unitários garantem que cada componente do sistema funcione corretamente de forma isolada, validando regras de negócio, fluxos e possíveis cenários de erro. Eles são essenciais para detectar falhas precocemente, facilitar refatorações e aumentar a confiabilidade do código. No projeto, os testes foram implementados utilizando frameworks como **xUnit**, **Moq**, **Autofixture** e **FluentAssertions**.
+
+A seguir, um exemplo visual da execução dos testes unitários:
+
+![Execução dos Testes Unitários](./img/unit-test-transactionflow.png)
+
+![Execução dos Testes Unitários](./img/unit-test-consolidated.png)
+
 - **Worker [Transactions]** ficou redundante, visto que esse caminho poderia ser cortado. Poderia ser utilizado o **Worker [DailyConsolidate]**. Mas Seguindo uma estratégia de separação por contexto de negócio, vale a redundância, já que dentro do contexto, podemos ter operações de negócios bem expecíficas, sendo assim ganhasse um desacoplamento.
 - **Event-Driven e Event-Sourcing** O bando de dados segue uma estrutura orientada a evento.
 - **JWT como mecanismo de segurança** é central em todos os fluxos.
