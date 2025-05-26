@@ -69,7 +69,7 @@ public class Startup : FunctionsStartup
         });
 
         services.AddHttpClient();
-        services.AddApplication();
+        services.AddApplication(context.Configuration);
         services.AddHttpContextAccessor();
     }
 
