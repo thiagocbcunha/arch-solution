@@ -20,11 +20,17 @@ manutenção facilitada, adotando a arquitetura de microsserviços com separaç�
 
 Para garantir reprodutibilidade de ambientes e simplificar o deploy, foi adotado o uso de **Docker** para orquestração dos serviços. A inicialização pode levar alguns minutos na primeira execução, devido à criação das imagens.
 
-Status Inicial
-![Status Inicial](./img/docker-compose.png)
 
-Containers Prontos
-![Containers Prontos](./img/docker-ready.png)
+<div style="display: flex; gap: 16px; align-items: flex-start;">
+  <figure style="width:48%; margin:0;">
+    <img src="./img/docker-compose.png" alt="Status Inicial" style="width:100%;" />
+    <figcaption style="text-align:center; font-size: 0.95em;">Status inicial dos containers após o <code>docker-compose up</code></figcaption>
+  </figure>
+  <figure style="width:48%; margin:0;">
+    <img src="./img/docker-ready.png" alt="Containers Prontos" style="width:100%;" />
+    <figcaption style="text-align:center; font-size: 0.95em;">Containers prontos e serviços em execução</figcaption>
+  </figure>
+</div>
 
 ---
 
@@ -159,8 +165,8 @@ sequenceDiagram
     Cliente->>Front: Acesso e login
     Front->>+AuthenticationServer: Validar Credenciais
     activate AuthenticationServer
-    AuthenticationServer->>Postgres: Consulta Credências
-    Postgres-->>AuthenticationServer: Devolve Credências
+    AuthenticationServer->>Postgres: Consulta Credenciais
+    Postgres-->>AuthenticationServer: Devolve Credenciais
     AuthenticationServer->>EntrepriseClinteApi: Consulta Dados de Cliente
     EntrepriseClinteApi-->>AuthenticationServer: Devolve Dados de Cliente
     AuthenticationServer-XRedis: Armazena dados sensíveis de Cliente relacionado ao token
@@ -227,14 +233,14 @@ sequenceDiagram
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
-- **Platarforma**: GKE
+- **Plataforma**: GKE
 - **Tecnologia**: .NET Web API
 - **Responsabilidade**:
   - Geração e validação de **tokens JWT**.
   - Central de autenticação tanto para Mobile quanto Web.
 - **Conexões**:
   - Utilizado por ambos os BFFs (`BFF Mobile` e `BFF Web`).
-  - **Redis** armazena de dados sensveis que não podem trafegar no token, atua como uma forma eficiente para recuperar esses dados sem necessidade de consulta a serviço externo ou banco.
+  - **Redis** Armazena dados sensíveis que não podem trafegar no token, atua como uma forma eficiente para recuperar esses dados sem necessidade de consulta a serviço externo ou banco.
 
 ---
 
@@ -242,9 +248,9 @@ sequenceDiagram
 
 ##### BFF Mobile [BFFMobileFlow]
 - **CICD**: Sim
-- **Tipo**: Serveless
+- **Tipo**: Serverless
 - **Contenerizado**: Sim
-- **Platarforma**: GCP Functions
+- **Plataforma**: GCP Functions
 - **Tecnologia**: .NET Minimal API
 - **Responsabilidade**:
   - Adaptar a comunicação entre os serviços internos e o aplicativo mobile.
@@ -258,9 +264,9 @@ sequenceDiagram
 
 ##### BFF Web [BFFWebFlow]
 - **CICD**: Sim
-- **Tipo**: Serveless
+- **Tipo**: Serverless
 - **Contenerizado**: Sim
-- **Platarforma**: GCP Functions
+- **Plataforma**: GCP Functions
 - **Tecnologia**: .NET Minimal API
 - **Responsabilidade**:
   - Adaptar a comunicação entre os serviços internos e a interface web.
@@ -280,7 +286,7 @@ sequenceDiagram
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
-- **Platarforma**: GKE
+- **Plataforma**: GKE
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**: 
   - Prover **consultas** de consolidação por dia.
@@ -292,7 +298,7 @@ sequenceDiagram
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
-- **Platarforma**: GKE
+- **Plataforma**: GKE
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**: 
   - Prover **modificações** e comandos relacionados à consolidação diária.
@@ -303,7 +309,7 @@ sequenceDiagram
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
-- **Platarforma**: GKE
+- **Plataforma**: GKE
 - **Tecnologia**: .NET HostedService
 - **Responsabilidade**: 
   - Consumir eventos de comando.
@@ -321,9 +327,9 @@ sequenceDiagram
 
 #### WebHook [Transactions]
 - **CICD**: Sim
-- **Tipo**: Serveless
+- **Tipo**: Serverless
 - **Contenerizado**: Sim
-- **Platarforma**: GCP Functions
+- **Plataforma**: GCP Functions
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**: 
   - Atuar como produtor de eventos no **Kafka** (`TransactionEvent`).
@@ -335,12 +341,12 @@ sequenceDiagram
 - **CICD**: Sim
 - **Tipo**: Pod Kubernets
 - **Contenerizado**: Sim
-- **Platarforma**: GKE
+- **Plataforma**: GKE
 - **Tecnologia**: .NET Core Web API
 - **Responsabilidade**:
   - Consumir eventos do `Kafka [TransactionEvent]`.
   - Fazer requisições **gRPC** para a `CommandApi [DailyConsolidate]`
-  - Atuar com Idepotência
+  - Atuar com idempotência
   - Atuar com Resiliência se utilizando de menimos de retry e deadletter (RabbitMq)
 - **Conexões**:
   - Kafka → Worker → CommandApi → SqlServer 
