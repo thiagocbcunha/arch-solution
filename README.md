@@ -189,12 +189,12 @@ sequenceDiagram
 
     Cliente->>WebHook: Submete Transação
     WebHook->>Kafka: Produz um Evento de Transação
-    Kafka->>Worker [TransactionEvent]: Consume um Evento de Transação
+    Worker [TransactionEvent]->>Kafka: Consume um Evento de Transação
     Worker [TransactionEvent]->>+CommandApi [DailyConsolidate]: Resiliente e Idepotente
     CommandApi [DailyConsolidate]->>SqlServer: Persiste evento de transação
     SqlServer->>CommandApi [DailyConsolidate]: Devolve um snapshot de consolidados
     CommandApi [DailyConsolidate]->>-RabbitMQ: Produz evento de transação para o Rabbit
-    RabbitMQ->>Worker [DailyConsolidate]: Consume o evento de transação
+    Worker [DailyConsolidate]->>RabbitMQ: Consume o evento de transação
     Worker [DailyConsolidate]->>MongoDB: Atualiza registo de consolidação no mongodb
 ```
 
